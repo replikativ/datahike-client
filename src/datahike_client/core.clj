@@ -1,26 +1,20 @@
 (ns datahike-client.core
-  (:require [clj-http.client :as client]
-            [cognitect.transit :as transit])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
+    (:require [java-http-clj.core :as http]))
 
-(defn api-request [endpoint data]
-  (let [out (ByteArrayOutputStream. 4096)
-        writer (transit/writer out :msgpack)
-        _ (transit/write writer data)
-        resp (client/request {:content-type :transit+json
-                              :accept :transit+json
-                              :as :stream
-                              :method :post
-                              :url (str "http://localhost:3000/" endpoint)
-                              :body (.toByteArray out)})
-        parsed (client/parse-transit (:body resp) :msgpack)]
-    (.close out)
-    parsed))
 
-(api-request "datoms" {:index :eavt})
+(defn api-request
+  ([method uri]
+   (api-request method uri nil nil))
+  ([method uri data]
+   (api-request method uri data nil))
+  ([method uri data opts]
+   (http/send (merge {:uri uri
+                      :method method
+                      :headers {"Content-Type" "transit+json"}
+                               "Accept" "transit+json"}
+                     (when (or (= method :post) data)
+                       {:body (str data)})))))
 
-(api-request "transact" {:tx-data [{:foo "BAR3" :bar 8}]})
-
-(api-request "transact" {:tx-data [{:db/id -1 :foo "BAR4" :bar 16}]})
-
-(api-request "q" {:query '[:find ?e ?b :where [?e :foo ?b]]})
+(comment
+  (api-request :get "http://localhost:3333/swagger.json")
+  (api-request :post "http://localhost:3333/swagger.json" "{:tx-data {:bar :baz}}"))
