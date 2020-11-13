@@ -13,11 +13,11 @@
   [desc]
   (let [method (key desc)
         data   (val desc)
-        op     (data "operationId")
+        op     (data :operationId)
         doc    (format "%s\n%s"
-                       (data "summary")
-                       (data "description"))
-        params (map #(dissoc % "description") (data "parameters"))]
+                       (data :summary)
+                       (data :description))
+        params (map #(dissoc % :description) (data :parameters))]
     {:method (keyword method)
      :op     (keyword op)
      :doc    doc
@@ -62,16 +62,21 @@
   (->> @(.spec client)
        :paths
        (map ->endpoint)
-       #_(mapcat :ops)
+       (mapcat :ops)
        #_(map :op)))
 
+#_(defn doc
+    "Returns the doc of the supplied category and operation"
+    [{:keys [category api-version]} operation]
+    (when (nil? category)
+      (req/panic! ":category is required"))
+    (update-in (select-keys (spec/request-info-of category operation api-version) [:doc :params])
+               [:params]
+               #(map (fn [param]
+                       (select-keys param [:name :type :description]))
+                     %)))
+
 (comment
-  (def foo (http/GET "http://localhost:3000/swagger.json" {:handler handler}))
-  (await (api-request :get "http://localhost:3000/swagger.json"))
-  (api-request :post "http://localhost:3000/transact" "{:tx-data {:bar :baz}}")
   (def c (client {:uri "http://localhost:3000"}))
   (ops c)
-  (map ->endpoint (:paths @(.spec c)))
-  (def datoms (get-in @(.spec c) [:paths "/datoms"]))
-  (get-in @(.spec c) [:paths "/seek-datoms"])
-  (->endpoint ["/datoms" datoms]))
+  (doc {}))
