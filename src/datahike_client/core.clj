@@ -4,35 +4,32 @@
               [taoensso.timbre :as log]))
 
 (defn ->op
-  "{req-method1 {summary     summary
-                 operationId id
-                 ...}} -> {method1 :req-method1
-                           op      :op
-                           doc     doc
-                           params  [params]}"
-  [desc]
-  (let [method (key desc)
-        data   (val desc)
-        op     (data :operationId)
-        doc    (format "%s\n%s"
-                       (data :summary)
-                       (data :description))
-        params (map #(dissoc % :description) (data :parameters))]
-    {:method (keyword method)
-     :op     (keyword op)
-     :doc    doc
-     :params (walk/keywordize-keys params)}))
+  "{:req-method1 {:summary     summary
+                  :operationId id
+                 ...}} -> {:method1 :req-method1
+                           :op      :op
+                           :doc     doc
+                           :params  [params]}"
+  [desc path]
+  (let [method       (key desc)
+        data         (val desc)
+        operation-id (keyword (data :operationId))
+        doc          (format "%s\n%s"
+                             (data :summary)
+                             (data :description))
+        params       (map #(dissoc % :description) (data :parameters))]
+    {operation-id
+     {:path path
+      :method method
+      :doc    doc
+      :params (walk/keywordize-keys params)}}))
 
 (defn ->endpoint
-  "{path {req-method1 {meta-data..}}
-          req-method2 {meta-data..}
+    "{:path {:req-method1 {meta-data..}}
+           :req-method2 {meta-data..}
           ...} -> {:path path :ops [output-of->op]}"
-  [[path op-defs]]
-  {:path path
-   :ops  (map ->op op-defs)})
-
-(defn handler [response]
-  response)
+    [[path op-defs]]
+    (map #(->op % path) op-defs))
 
 (defn api-request
   ([method uri]
@@ -48,35 +45,86 @@
                                 :handler (fn [r] r)
                                 :params data})))))
 
-(deftype Client [uri spec])
+(deftype Client [uri spec endpoints ops])
 
 (defn client [{:keys [uri]}]
-  (let [a (atom {})
-        h (fn [v] (reset! a v))
-        o (http/GET (str uri "/swagger.json") {:handler h})]
-    (->Client uri a)))
+  (let [spec (atom {})
+        handler (fn [v] (reset! spec v))
+        o @(http/GET (str uri "/swagger.json") {:handler handler})
+        endpoints (->> @spec
+                       :paths
+                       (map ->endpoint)
+                       (flatten)
+                       (into {}))
+        ops (keys endpoints)]
+    (->Client uri spec endpoints ops)))
 
-(defn ops
-  "Returns the supported ops for a client."
-  [client]
-  (->> @(.spec client)
-       :paths
-       (map ->endpoint)
-       (mapcat :ops)
-       #_(map :op)))
+(defn find-op-meta
+  "Finds the matching operation by operationId in list of ops from the spec.
+  Returns the method, doc and params form it, nil otherwise."
+  [op ops]
+  (->> ops
+       (filter #(= op (:operation-id %)))
+       (map #(select-keys % [:method :doc :params]))
+       first))
 
-#_(defn doc
-    "Returns the doc of the supplied category and operation"
-    [{:keys [category api-version]} operation]
-    (when (nil? category)
-      (req/panic! ":category is required"))
-    (update-in (select-keys (spec/request-info-of category operation api-version) [:doc :params])
-               [:params]
-               #(map (fn [param]
-                       (select-keys param [:name :type :description]))
-                     %)))
+(defn request-info-of
+  "Returns a map of path, method, doc and params of an operation.
+   Returns nil if not found."
+  [operation client]
+  (let [{:keys [paths version]} (get-path-of-operation operation client)]
+    (->> paths
+         (map ->endpoint)
+         (map #(assoc-in % [:ops] (find-op-meta operation (:ops %))))
+         (filter #(some? (:ops %)))
+         (map #(hash-map :path   (format "/v%s%s"
+                                         version
+                                         (:path %))
+                         :method (get-in % [:ops :method])
+                         :doc    (get-in % [:ops :doc])
+                         :params (get-in % [:ops :params])))
+         first)))
+
+#_(defn invoke
+    ([operation client]
+     (invoke operation client nil))
+    ([operation client data]
+     {:pre [(instance? Client client)
+            (not nil? operation)]}
+     (let [request-info                     (spec/request-info-of operation client)
+           _                                (when (nil? request-info)
+                                              (req/panic! "Invalid params for invoking op."))
+           {:keys [body query header path]} (->> request-info
+                                                 :params
+                                                 (reduce (partial spec/gather-request-params params) {}))
+           response                         (req/fetch {:conn             (req/connect* {:uri      (:uri conn)
+                                                                                         :timeouts (:timeouts conn)})
+                                                        :url              (:path request-info)
+                                                        :method           (:method request-info)
+                                                        :query            query
+                                                        :header           header
+                                                        :body             (-> body
+                                                                              vals
+                                                                              first)
+                                                        :path             path
+                                                        :as               as
+                                                        :throw-exception? throw-exception?})
+           try-json-parse                   #(try
+                                               (json/read-value % (json/object-mapper {:decode-key-fn true}))
+                                               (catch Exception _ %))]
+       (case as
+         (:socket :stream) response
+         (try-json-parse response)))))
+
 
 (comment
   (def c (client {:uri "http://localhost:3000"}))
-  (ops c)
-  (doc {}))
+  (.endpoints c)
+  (.ops c)
+
+  (def paths (->> @(.spec c)
+                 :paths
+                 (map ->endpoint)
+                 (clojure.walk/keywordize-keys)
+                 (flatten)
+                 (into {}))))
