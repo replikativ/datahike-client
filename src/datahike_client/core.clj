@@ -31,20 +31,6 @@
     [[path op-defs]]
     (map #(->op % path) op-defs))
 
-(defn api-request
-  ([method uri]
-   (api-request method uri nil nil))
-  ([method uri data]
-   (api-request method uri data nil))
-  ([method uri data opts]
-   (let [_ (log/debug "Sending request: " method " " uri " " data " " opts)]
-     (http/ajax-request (merge {:uri uri
-                                :method method
-                                :format (http/transit-request-format)
-                                :response-format (http/transit-response-format)
-                                :handler (fn [r] r)
-                                :params data})))))
-
 (deftype Client [uri spec endpoints ops])
 
 (defn client [{:keys [uri]}]
@@ -68,53 +54,45 @@
        (map #(select-keys % [:method :doc :params]))
        first))
 
-(defn request-info-of
-  "Returns a map of path, method, doc and params of an operation.
-   Returns nil if not found."
-  [operation client]
-  (let [{:keys [paths version]} (get-path-of-operation operation client)]
-    (->> paths
-         (map ->endpoint)
-         (map #(assoc-in % [:ops] (find-op-meta operation (:ops %))))
-         (filter #(some? (:ops %)))
-         (map #(hash-map :path   (format "/v%s%s"
-                                         version
-                                         (:path %))
-                         :method (get-in % [:ops :method])
-                         :doc    (get-in % [:ops :doc])
-                         :params (get-in % [:ops :params])))
-         first)))
+(defn gather-request-params
+  "Reducer fn generating categorized params from supplied params.
+  Returns a map of query, path and body params."
+  [supplied-params request-params {:keys [name in]}]
+  (let [param (keyword name)]
+    (if (not (contains? supplied-params param))
+      request-params
+      (update-in request-params [(keyword in)] assoc param (param supplied-params)))))
 
-#_(defn invoke
-    ([operation client]
-     (invoke operation client nil))
-    ([operation client data]
-     {:pre [(instance? Client client)
-            (not nil? operation)]}
-     (let [request-info                     (spec/request-info-of operation client)
-           _                                (when (nil? request-info)
-                                              (req/panic! "Invalid params for invoking op."))
-           {:keys [body query header path]} (->> request-info
-                                                 :params
-                                                 (reduce (partial spec/gather-request-params params) {}))
-           response                         (req/fetch {:conn             (req/connect* {:uri      (:uri conn)
-                                                                                         :timeouts (:timeouts conn)})
-                                                        :url              (:path request-info)
-                                                        :method           (:method request-info)
-                                                        :query            query
-                                                        :header           header
-                                                        :body             (-> body
-                                                                              vals
-                                                                              first)
-                                                        :path             path
-                                                        :as               as
-                                                        :throw-exception? throw-exception?})
-           try-json-parse                   #(try
-                                               (json/read-value % (json/object-mapper {:decode-key-fn true}))
-                                               (catch Exception _ %))]
-       (case as
-         (:socket :stream) response
-         (try-json-parse response)))))
+(defn invoke
+  ([operation client]
+   (invoke operation client nil))
+  ([operation client params]
+   {:pre [(instance? Client client)
+          (and (keyword? operation) (contains? (.endpoints client) operation))]}
+   (let [request-info                     (operation (.endpoints client))
+         {:keys [body query header path]} (->> request-info
+                                              :params
+                                              (reduce (partial gather-request-params params) {}))
+         response                         (atom {})
+         handler                          (fn [res] (reset! response res))
+         request-map                       {:uri             (str (.uri client) (:path request-info))
+                                            :method          (:method request-info)
+                                            :format          (http/transit-request-format)
+                                            :response-format (http/transit-response-format)
+                                            :headers         header
+                                            :timeout         30
+                                            :params          (or body query)
+                                            :handler         handler}
+         _                                (clojure.pprint/pprint request-map)]
+     @(http/ajax-request {:uri             (str (.uri client) (:path params))
+                          :method          (:method request-info)
+                          :format          (http/transit-request-format)
+                          :response-format (http/transit-response-format)
+                          :headers         header
+                          :timeout         30
+                          :params          (or body query)
+                          :handler         handler})
+     @response)))
 
 
 (comment
@@ -122,9 +100,22 @@
   (.endpoints c)
   (.ops c)
 
+  (instance? Client c)
   (def paths (->> @(.spec c)
                  :paths
                  (map ->endpoint)
                  (clojure.walk/keywordize-keys)
                  (flatten)
-                 (into {}))))
+                 (into {})))
+  (contains? (.endpoints c) :SeekDatoms)
+  (:SeekDatoms (.endpoints c))
+  (invoke :EchoGET c {:path "/db"})
+  (->> (:SeekDatoms (.endpoints c))
+       :params
+       (reduce (partial gather-request-params
+                        {:datahike-server.server/datoms-request {:index :aevt}
+                         :db-name "fortunate-common-pipistrelle"})
+               {}))
+  (invoke :EchoGET c)
+  (invoke :SeekDatoms c {:datahike-server.server/datoms-request {:index :aevt}
+                         :db-name "fortunate-common-pipistrelle"}))
