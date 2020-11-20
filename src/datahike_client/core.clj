@@ -77,21 +77,14 @@
          handler                          (fn [res] (reset! response res))
          request-map                       {:uri             (str (.uri client) (:path request-info))
                                             :method          (:method request-info)
-                                            :format          (http/transit-request-format)
-                                            :response-format (http/transit-response-format)
+                                            :format          (http/json-request-format)
+                                            :response-format (http/json-response-format)
                                             :headers         header
-                                            :timeout         30
+                                            :timeout         300
                                             :params          (or body query)
                                             :handler         handler}
          _                                (clojure.pprint/pprint request-map)]
-     @(http/ajax-request {:uri             (str (.uri client) (:path params))
-                          :method          (:method request-info)
-                          :format          (http/transit-request-format)
-                          :response-format (http/transit-response-format)
-                          :headers         header
-                          :timeout         30
-                          :params          (or body query)
-                          :handler         handler})
+     @(http/ajax-request request-map)
      @response)))
 
 
@@ -108,8 +101,14 @@
                  (flatten)
                  (into {})))
   (contains? (.endpoints c) :SeekDatoms)
-  (:SeekDatoms (.endpoints c))
-  (invoke :EchoGET c {:path "/db"})
+  (:EchoPOST (.endpoints c))
+  (invoke :EchoGET c)
+  (invoke :EchoPOST c {:datahike-server.server/params {:foo "bar"}})
+  (->> (:EchoPOST (.endpoints c))
+       :params
+       (reduce (partial gather-request-params
+                        {"datahike-server.server/params" {:db-name "faulty-least-weasel"}})
+               {}))
   (->> (:SeekDatoms (.endpoints c))
        :params
        (reduce (partial gather-request-params
