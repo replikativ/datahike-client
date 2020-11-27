@@ -31,20 +31,6 @@
     [[path op-defs]]
     (map #(->op % path) op-defs))
 
-(deftype Client [uri spec endpoints ops])
-
-(defn client [{:keys [uri]}]
-  (let [spec (atom {})
-        handler (fn [v] (reset! spec v))
-        o @(http/GET (str uri "/swagger.json") {:handler handler})
-        endpoints (->> @spec
-                       :paths
-                       (map ->endpoint)
-                       (flatten)
-                       (into {}))
-        ops (keys endpoints)]
-    (->Client uri spec endpoints ops)))
-
 (defn find-op-meta
   "Finds the matching operation by operationId in list of ops from the spec.
   Returns the method, doc and params form it, nil otherwise."
@@ -68,32 +54,68 @@
    (invoke operation client nil))
   ([operation client params]
    {:pre [(instance? Client client)
-          (and (keyword? operation) (contains? (.endpoints client) operation))]}
-   (let [request-info                     (operation (.endpoints client))
+          (and (keyword? operation) (contains? (.operations client) operation))]}
+   (let [request-info                     (operation (.operations client))
          {:keys [body query header path]} (->> request-info
                                               :params
                                               (reduce (partial gather-request-params params) {}))
          response                         (atom {})
          handler                          (fn [res] (reset! response res))
-         request-map                       {:uri             (str (.uri client) (:path request-info))
+         request-map                       {:uri             (str (.endpoint client) (:path request-info))
                                             :method          (:method request-info)
                                             :format          (http/json-request-format)
                                             :response-format (http/json-response-format)
                                             :headers         header
                                             :timeout         300
-                                            :params          (or body query)
+                                            :params          body
                                             :handler         handler}
          _                                (clojure.pprint/pprint request-map)]
      @(http/ajax-request request-map)
      @response)))
 
+(deftype Client [endpoint secret operations])
+
+(defn client [{:keys [endpoint secret]}]
+  (let [spec (atom {})
+        handler (fn [v] (reset! spec v))
+        o @(http/GET (str endpoint "/swagger.json") {:handler handler})
+        operations (->> @spec
+                        :paths
+                        (map ->endpoint)
+                        (flatten)
+                        (into {}))]
+    (->Client endpoint secret operations)))
+
+(deftype Connection [client db-name])
+
+(defn connect [client db-name]
+  {:pre [(instance? Client client)
+         (string? db-name)]}
+  (->Connection client db-name))
+
+(defn list-databases [client arg-map]
+  {:pre [(instance? Client client)
+         (map? arg-map)]}
+  (invoke :ListDatabases client))
+
+(defn transact [conn arg-map]
+  {:pre [(instance? Connection conn)
+         (map? arg-map)]}
+  (invoke :Transact (.client conn) arg-map))
 
 (comment
-  (def c (client {:uri "http://localhost:3000"}))
-  (.endpoints c)
-  (.ops c)
-
+  (def c (client {:endpoint "http://localhost:3000" :secret "bar"}))
+  (.endpoint c)
+  (keys (.operations c))
   (instance? Client c)
+
+  (list-databases c {})
+  (def conn (connect c "abrupt-red-deer"))
+  (transact conn {:body {:transactions {:tx-data [{:name  "Alice", :age   20}
+                                                  {:name  "Bob", :age   30}
+                                                  {:name  "Charlie", :age   40}
+                                                  {:age 15}]}}})
+
   (def paths (->> @(.spec c)
                  :paths
                  (map ->endpoint)
