@@ -3,26 +3,15 @@
               [ajax.core :as http]
               [taoensso.timbre :as log]))
 
-(defn invoke [client {:keys [uri method params header]}]
-  {:pre [(instance? Client client)]}
-  (let [response                         (atom {})
-        handler                          (fn [res] (reset! response res))
-        request-map                       {:uri             (str (.endpoint client) uri)
-                                           :method          method
-                                           :format          (http/transit-request-format)
-                                           :response-format (http/transit-response-format)
-                                           :headers         header
-                                           :timeout         300
-                                           :params          params
-                                           :handler         handler}
-        _                                (clojure.pprint/pprint request-map)]
-    @(http/ajax-request request-map)
-    @response))
+(defonce config {:timeout 300
+                 :endpoint "http://localhost:3000"
+                 :token "bar"
+                 :db-name "foo"})
 
-(deftype Client [endpoint secret])
+(deftype Client [endpoint token])
 
-(defn client [{:keys [endpoint secret]}]
-  (->Client endpoint secret))
+(defn client [{:keys [endpoint token]}]
+  (->Client endpoint token))
 
 (deftype Connection [client db-name])
 
@@ -30,6 +19,22 @@
   {:pre [(instance? Client client)
          (string? db-name)]}
   (->Connection client db-name))
+
+(defn invoke [client {:keys [uri method params headers]}]
+  {:pre [(instance? Client client)]}
+  (let [response                         (atom {})
+        handler                          (fn [res] (reset! response res))
+        request-map                       {:uri             (str (.endpoint client) uri)
+                                           :method          method
+                                           :format          (http/transit-request-format)
+                                           :response-format (http/transit-response-format)
+                                           :headers         headers
+                                           :timeout         (:timeout config)
+                                           :params          params
+                                           :handler         handler}
+        _                                (clojure.pprint/pprint request-map)]
+    @(http/ajax-request request-map)
+    @response))
 
 (defn list-databases
   ([client]
@@ -40,21 +45,45 @@
    (invoke client {:uri "/databases"
                    :method :get})))
 
-(defn transact [conn tx-map]
+(defn transact [conn arg-map]
   {:pre [(instance? Connection conn)
-         (map? tx-map)]}
-  (invoke (.client conn) {:uri "/transact"
-                          :params tx-map
-                          :method :post}))
+         (map? arg-map)]}
+  (invoke (.client conn)
+          {:uri "/transact"
+           :params {:tx-data (:tx-data arg-map)}
+           :method :post
+           :headers {"db-name" (.db-name conn)}}))
+
+(defn pull
+  ([conn arg-map]
+   {:pre [(instance? Connection conn)
+          (map? arg-map)]}
+   (let [db-tx (:db-tx arg-map)]
+     (invoke (.client conn)
+             {:uri "/pull"
+              ;:params (dissoc arg-map :db-tx)
+              :method :post
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))})))
+  ([conn selector eid]
+   (pull conn {:selector selector :eid eid}))
+  ([conn selector eid db-tx]
+   (pull conn db-tx {:selector selector :eid eid :db-tx db-tx})))
 
 (comment
-  (def c (client {:endpoint "http://localhost:3333" :secret "bar"}))
+  (def c (client config))
   (.endpoint c)
   (instance? Client c)
 
   (list-databases c {})
-  (def conn (connect c "gorgeous-house-mouse"))
-  (transact conn {:transactions {:tx-data [{:name  "Alice", :age   20}
-                                           {:name  "Bob", :age   30}
-                                           {:name  "Charlie", :age   40}
-                                           {:age 15}]}}))
+  (def conn (connect c "foo"))
+  (transact conn {:db-name (:db-name config)
+                  :tx-data [{:name  "Alice", :age   20}
+                            {:name  "Bob", :age   30}
+                            {:name  "Charlie", :age   40}
+                            {:age 15}]})
+  (pull conn {:selector [:age :name] :eid 4})
+  (pull conn {:selector [:age :name] :eid 4 :db-tx "12345556"})
+  ; TODO
+  (pull conn {:selector [:age :name] :eid 4 :db-tx 12345556}))

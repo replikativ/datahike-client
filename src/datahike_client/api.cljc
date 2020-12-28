@@ -175,21 +175,21 @@
     release
     c/release)
 
-#_(def ^{:arglists '([db selector eid] [db arg-map])
-         :doc      "Fetches data from database using recursive declarative description. See [docs.datomic.com/on-prem/pull.html](https://docs.datomic.com/on-prem/pull.html).
+(def ^{:arglists '([conn db-name selector eid] [conn db-name arg-map])
+       :doc      "Fetches data from database using recursive declarative description. See [docs.datomic.com/on-prem/pull.html](https://docs.datomic.com/on-prem/pull.html).
 
                   Unlike [[entity]], returns plain Clojure map (not lazy).
 
                   Usage:
 
-                      (pull db [:db/id, :name, :likes, {:friends [:db/id :name]}] 1) ; => {:db/id   1,
-                                                                                           :name    \"Ivan\"
-                                                                                           :likes   [:pizza]
-                                                                                           :friends [{:db/id 2, :name \"Oleg\"}]}
+                      (pull conn \"my-db\" [:db/id, :name, :likes, {:friends [:db/id :name]}] 1) ; => {:db/id   1,
+                                                                                                       :name    \"Ivan\"
+                                                                                                       :likes   [:pizza]
+                                                                                                       :friends [{:db/id 2, :name \"Oleg\"}]}
 
                   The arity-2 version takes :selector and :eid in arg-map."}
-    pull
-    c/pull)
+  pull
+  c/pull)
 
 #_(def ^{:arglists '([db selector eids])
          :doc      "Same as [[pull]], but accepts sequence of ids and returns sequence of maps.
