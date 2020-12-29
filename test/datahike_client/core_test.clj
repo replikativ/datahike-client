@@ -1,6 +1,6 @@
 (ns datahike-client.core-test
   (:require [clojure.test :refer :all]
-            [datahike-client.core :as sut]))
+            [datahike-client.api :as sut]))
 
 (defonce config {:timeout 300
                  :endpoint "http://localhost:3000"
@@ -35,3 +35,8 @@
   (testing "Failed with db-tx as Long"
     (is (= "foo"
            (sut/pull connection {:selector [:age :name] :eid 4 :db-tx 12345556})))))
+
+(deftest db-test
+  (testing "Successful db"
+    (is (= "foo"
+           (sut/db connection)))))

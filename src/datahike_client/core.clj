@@ -61,7 +61,7 @@
    (let [db-tx (:db-tx arg-map)]
      (invoke (.client conn)
              {:uri "/pull"
-              ;:params (dissoc arg-map :db-tx)
+              :params (dissoc arg-map :db-tx)
               :method :post
               :headers (merge {"db-name" (.db-name conn)}
                               (when db-tx
@@ -70,6 +70,13 @@
    (pull conn {:selector selector :eid eid}))
   ([conn selector eid db-tx]
    (pull conn db-tx {:selector selector :eid eid :db-tx db-tx})))
+
+(defn db [conn]
+  {:pre [(instance? Connection conn)]}
+  (invoke (.client conn)
+          {:uri "/db"
+           :method :get
+           :headers {"db-name" (.db-name conn)}}))
 
 (comment
   (def c (client config))
@@ -86,4 +93,6 @@
   (pull conn {:selector [:age :name] :eid 4})
   (pull conn {:selector [:age :name] :eid 4 :db-tx "12345556"})
   ; TODO
-  (pull conn {:selector [:age :name] :eid 4 :db-tx 12345556}))
+  (pull conn {:selector [:age :name] :eid 4 :db-tx 12345556})
+  (merge {"db-name" "foo"})
+  (db conn))
