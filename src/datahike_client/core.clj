@@ -20,6 +20,7 @@
          (string? db-name)]}
   (->Connection client db-name))
 
+; TODO Make it cljs-ready
 (defn invoke [client {:keys [uri method params headers]}]
   {:pre [(instance? Client client)]}
   (let [response                         (atom {})
@@ -32,13 +33,17 @@
                                            :timeout         (:timeout config)
                                            :params          params
                                            :handler         handler}
-        _                                (clojure.pprint/pprint request-map)]
+        _                                (log/debug request-map)]
     @(http/ajax-request request-map)
-    @response))
+    (let [res @response]
+      (if (first res)
+        (second res)
+        (throw (ex-info "Failed request" {:request request-map
+                                          :cause (second res)}))))))
 
 (defn list-databases
   ([client]
-   (invoke client nil))
+   (list-databases client {}))
   ([client arg-map]
    {:pre [(instance? Client client)
           (map? arg-map)]}
@@ -55,21 +60,44 @@
            :headers {"db-name" (.db-name conn)}}))
 
 (defn pull
-  ([conn arg-map]
-   {:pre [(instance? Connection conn)
-          (map? arg-map)]}
-   (let [db-tx (:db-tx arg-map)]
-     (invoke (.client conn)
-             {:uri "/pull"
-              :params (dissoc arg-map :db-tx)
-              :method :post
-              :headers (merge {"db-name" (.db-name conn)}
-                              (when db-tx
-                                {"db-tx" db-tx}))})))
+  ([conn {:keys [selector eid db-tx]}]
+   (pull conn selector eid db-tx))
   ([conn selector eid]
-   (pull conn {:selector selector :eid eid}))
+   (pull conn selector eid nil))
   ([conn selector eid db-tx]
-   (pull conn db-tx {:selector selector :eid eid :db-tx db-tx})))
+   {:pre [(instance? Connection conn)
+          (vector? selector)
+          (int? eid)
+          (or (int? db-tx)
+              (nil? db-tx))]}
+   (invoke (.client conn)
+           {:uri "/pull"
+            :params {:selector selector
+                     :eid eid}
+            :method :post
+            :headers (merge {"db-name" (.db-name conn)}
+                            (when db-tx
+                              {"db-tx" db-tx}))})))
+
+(defn pull-many
+  ([conn {:keys [selector eids db-tx]}]
+   (pull-many conn selector eids db-tx))
+  ([conn selector eids]
+   (pull-many conn selector eids))
+  ([conn selector eids db-tx]
+   {:pre [(instance? Connection conn)
+          (vector? selector)
+          (vector? eids)
+          (or (int? db-tx)
+              (nil? db-tx))]}
+   (invoke (.client conn)
+           {:uri "/pull-many"
+            :params {:selector selector
+                     :eids eids}
+            :method :post
+            :headers (merge {"db-name" (.db-name conn)}
+                            (when db-tx
+                              {"db-tx" db-tx}))})))
 
 (defn db [conn]
   {:pre [(instance? Connection conn)]}

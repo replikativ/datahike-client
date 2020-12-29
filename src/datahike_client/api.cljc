@@ -25,11 +25,11 @@
   c/connect)
 
 (def
-  ^{:arglists '([client arg-map])
+  ^{:arglists '([client][client arg-map])
     :doc "Lists all databases.
           Usage:
 
-              (list-databases client {:timeout 3000})"}
+              (list-databases client)"}
   list-databases
   c/list-databases)
 
@@ -122,7 +122,7 @@
   transact
   c/transact)
 
-(def ^{:arglists '([conn db-name selector eid] [conn db-name arg-map])
+(def ^{:arglists '([conn arg-map][conn selector eid][conn selector eid db-tx])
        :doc      "Fetches data from database using recursive declarative description. See [docs.datomic.com/on-prem/pull.html](https://docs.datomic.com/on-prem/pull.html).
 
                   Unlike [[entity]], returns plain Clojure map (not lazy).
@@ -138,15 +138,15 @@
   pull
   c/pull)
 
-#_(def ^{:arglists '([db selector eids])
-         :doc      "Same as [[pull]], but accepts sequence of ids and returns sequence of maps.
+(def ^{:arglists '([conn arg-map][conn selector eids][conn selector eids db-tx])
+       :doc      "Same as [[pull]], but accepts sequence of ids and returns sequence of maps.
 
                   Usage:
 
                       (pull-many db [:db/id :name] [1 2]) ; => [{:db/id 1, :name \"Ivan\"}
                                                                 {:db/id 2, :name \"Oleg\"}]"}
-    pull-many
-    c/pull-many)
+  pull-many
+  c/pull-many)
 
 #_(def ^{:arglists '([query & args] [arg-map])
          :doc "Executes a datalog query. See [docs.datomic.com/on-prem/query.html](https://docs.datomic.com/on-prem/query.html).
@@ -448,9 +448,9 @@
     entity
     c/entity)
 
-(defn db
-  "Returns the underlying immutable database value from a connection.
+(def ^{:arglists '([conn])
+       :doc "Returns the underlying immutable database value from a connection.
 
-   Exists for Datomic API compatibility. Prefer using `@conn` directly if possible."
-  [conn]
-  @conn)
+             Exists for Datomic API compatibility. Prefer using `@conn` directly if possible."}
+  db
+  c/db)
