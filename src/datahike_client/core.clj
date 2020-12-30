@@ -6,7 +6,7 @@
 (defonce config {:timeout 300
                  :endpoint "http://localhost:3000"
                  :token "bar"
-                 :db-name "foo"})
+                 :db-name "config-test"})
 
 (deftype Client [endpoint token])
 
@@ -35,11 +35,13 @@
                                            :handler         handler}
         _                                (log/debug request-map)]
     @(http/ajax-request request-map)
-    (let [res @response]
-      (if (first res)
-        (second res)
-        (throw (ex-info "Failed request" {:request request-map
-                                          :cause (second res)}))))))
+    @response
+    #_(let [res @response
+            _ (log/debug res)]
+        (if (first res)
+          (second res)
+          (throw (ex-info "Failed request" {:request request-map
+                                            :cause (second res)}))))))
 
 (defn list-databases
   ([client]
@@ -99,6 +101,30 @@
                             (when db-tx
                               {"db-tx" db-tx}))})))
 
+(defn q
+  ([conn {:keys [query args limit offset db-tx]}]
+   (invoke (.client conn)
+           {:uri "/q"
+            :method :post
+            :params (merge {:query query}
+                           (when args
+                            {:args args})
+                           (when limit
+                            {:limit limit})
+                           (when offset
+                            {:offset offset}))
+            :headers (merge {"db-name" (.db-name conn)}
+                            (when db-tx
+                              {"db-tx" db-tx}))}))
+  ([conn query & args]
+   (let [[args limit offset db-tx] args]
+    (q conn
+       {:query query
+        :args args
+        :limit limit
+        :offset offset
+        :db-tx db-tx}))))
+
 (defn db [conn]
   {:pre [(instance? Connection conn)]}
   (invoke (.client conn)
@@ -112,9 +138,9 @@
   (instance? Client c)
 
   (list-databases c {})
-  (def conn (connect c "foo"))
-  (transact conn {:db-name (:db-name config)
-                  :tx-data [{:name  "Alice", :age   20}
+  (def conn (connect c (:db-name config)))
+  (.db-name conn)
+  (transact conn {:tx-data [{:name  "Alice", :age   20}
                             {:name  "Bob", :age   30}
                             {:name  "Charlie", :age   40}
                             {:age 15}]})
@@ -122,5 +148,8 @@
   (pull conn {:selector [:age :name] :eid 4 :db-tx "12345556"})
   ; TODO
   (pull conn {:selector [:age :name] :eid 4 :db-tx 12345556})
-  (merge {"db-name" "foo"})
-  (db conn))
+  (pull-many conn {:selector [:age :name] :eids [1 2 3 4]})
+  (datahike-client.api/q
+    conn
+    {:query '[:find ?v
+              :where [_ :name ?v]]}))

@@ -3,14 +3,15 @@
 set -o errexit
 set -o pipefail
 
-#trap teardown EXIT
+trap teardown EXIT
 
 function setup() {
     if [ -z ${CIRCLECI} ]; then
         echo $(docker run --detach --publish 3000:3000 \
-                          --env DATAHIKE_SERVER_LOGLEVEL=info \
+                          --env DATAHIKE_SERVER_LOGLEVEL=trace \
                           --env DATAHIKE_SERVER_DEV_MODE=true \
                           --env DATAHIKE_STORE_BACKEND=mem \
+                          --env DATAHIKE_SCHEMA_FLEXIBILITY=read \
                           --env DATAHIKE_NAME=config-test \
                           replikativ/datahike-server:snapshot)
     fi
@@ -24,4 +25,6 @@ function teardown() {
 
 CONTAINER_NAME=$(setup)
 
-#lein test
+sleep 3
+
+lein test

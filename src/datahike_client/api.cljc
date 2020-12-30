@@ -148,8 +148,8 @@
   pull-many
   c/pull-many)
 
-#_(def ^{:arglists '([query & args] [arg-map])
-         :doc "Executes a datalog query. See [docs.datomic.com/on-prem/query.html](https://docs.datomic.com/on-prem/query.html).
+(def ^{:arglists '([conn query & args] [conn arg-map])
+       :doc "Executes a datalog query. See [docs.datomic.com/on-prem/query.html](https://docs.datomic.com/on-prem/query.html).
 
              Usage:
 
@@ -189,9 +189,9 @@
                               [3 :likes \"pie\"]
                               [4 :likes \"pizza\"]}]})
 
-             Query passed as map needs vectors as values. Query can not be passed as list. The 1-arity function takes a map with the arguments :query and :args and optionally the additional keys :offset and :limit."}
-    q
-    c/q)
+             Query passed as map needs vectors as values. Query can not be passed as list. The 1-arity function takes a map with the arguments :query and :args and optionally the additional keys :offset, :limit and :db-tx."}
+  q
+  c/q)
 
 #_(defmulti datoms {:arglists '([db arg-map] [db index & components])
                     :doc "Index lookup. Returns a sequence of datoms (lazy iterator over actual DB index) which components
