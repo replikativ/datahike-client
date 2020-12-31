@@ -27,4 +27,4 @@ CONTAINER_NAME=$(setup)
 
 sleep 3
 
-lein test
+TIMBRE_LEVEL=':info' lein test

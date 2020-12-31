@@ -80,6 +80,26 @@
                   {:query '[:find ?v
                             :where [_ :name ?v]]})))))
 
+(deftest datoms-test
+  (testing "Successful datoms index only"
+    (is (= 8
+           (-> (sut/datoms connection {:index :eavt})
+               second
+               count)))
+    (is (= 8
+           (-> (sut/datoms connection :eavt)
+               second
+               count))))
+  (testing "Successful datoms index and components"
+    (is (= [true [[4 :age 15 536870913 true]]]
+           (sut/datoms connection {:index :eavt :components [4]})))
+    (is (= [true [[4 :age 15 536870913 true]]]
+           (sut/datoms connection :eavt 4)))
+    (is (= [true [[4 :age 15 536870913 true]]]
+           (sut/datoms connection :eavt 4 :age)))
+    (is (= [true []]
+           (sut/datoms connection :eavt 4 :age 16)))))
+
 (deftest db-test
   (testing "Successful db"
     (is (let [res (sut/db connection)]

@@ -125,6 +125,20 @@
         :offset offset
         :db-tx db-tx}))))
 
+(defn datoms
+  ([conn index components]
+   (datoms conn index components nil))
+  ([conn index components db-tx]
+   (invoke (.client conn)
+           {:uri "/datoms"
+            :method :post
+            :params (merge {:index index}
+                           (when components
+                            {:components components}))
+            :headers (merge {"db-name" (.db-name conn)}
+                            (when db-tx
+                              {"db-tx" db-tx}))})))
+
 (defn db [conn]
   {:pre [(instance? Connection conn)]}
   (invoke (.client conn)
@@ -152,4 +166,6 @@
   (datahike-client.api/q
     conn
     {:query '[:find ?v
-              :where [_ :name ?v]]}))
+              :where [_ :name ?v]]})
+  (datahike-client.api/datoms conn {:index :eavt})
+  (datahike-client.api/datoms conn :eavt))

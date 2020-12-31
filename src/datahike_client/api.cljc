@@ -193,12 +193,12 @@
   q
   c/q)
 
-#_(defmulti datoms {:arglists '([db arg-map] [db index & components])
-                    :doc "Index lookup. Returns a sequence of datoms (lazy iterator over actual DB index) which components
+(defmulti datoms {:arglists '([conn arg-map] [conn index & components])
+                  :doc "Index lookup. Returns a sequence of datoms (lazy iterator over actual DB index) which components
                         (e, a, v) match passed arguments. Datoms are sorted in index sort order. Possible `index` values
                         are: `:eavt`, `:aevt`, `:avet`.
 
-                        Accepts db and a map as arguments with the keys `:index` and `:components` provided within the
+                        Accepts conn and a map as arguments with the keys `:index` and `:components` provided within the
                         map, or the arguments provided separately.
 
 
@@ -207,104 +207,104 @@
                         Set up your database. Beware that for the `:avet` index the index needs to be set to true for
                         the attribute `:likes`.
 
-                            (d/transact db [{:db/ident :name
-                                             :db/type :db.type/string
-                                             :db/cardinality :db.cardinality/one}
-                                            {:db/ident :likes
-                                             :db/type :db.type/string
-                                             :db/index true
-                                             :db/cardinality :db.cardinality/many}
-                                            {:db/ident :friends
-                                             :db/type :db.type/ref
-                                             :db/cardinality :db.cardinality/many}]
+                            (d/transact conn [{:db/ident :name
+                                               :db/type :db.type/string
+                                               :db/cardinality :db.cardinality/one}
+                                              {:db/ident :likes
+                                               :db/type :db.type/string
+                                               :db/index true
+                                               :db/cardinality :db.cardinality/many}
+                                              {:db/ident :friends
+                                               :db/type :db.type/ref
+                                               :db/cardinality :db.cardinality/many}]
 
-                            (d/transact db [{:db/id 4 :name \"Ivan\"
-                                            {:db/id 4 :likes \"fries\"
-                                            {:db/id 4 :likes \"pizza\"}
-                                            {:db/id 4 :friends 5}])
+                            (d/transact conn [{:db/id 4 :name \"Ivan\"
+                                              {:db/id 4 :likes \"fries\"
+                                              {:db/id 4 :likes \"pizza\"}
+                                              {:db/id 4 :friends 5}])
 
-                            (d/transact db [{:db/id 5 :name \"Oleg\"}
-                                            {:db/id 5 :likes \"candy\"}
-                                            {:db/id 5 :likes \"pie\"}
-                                            {:db/id 5 :likes \"pizza\"}])
+                            (d/transact conn [{:db/id 5 :name \"Oleg\"}
+                                              {:db/id 5 :likes \"candy\"}
+                                              {:db/id 5 :likes \"pie\"}
+                                              {:db/id 5 :likes \"pizza\"}])
 
                         Find all datoms for entity id == 1 (any attrs and values) sort by attribute, then value
 
-                            (datoms @db {:index :eavt
-                                        :components [1]}) ; => (#datahike/Datom [1 :friends 2]
-                                                                #datahike/Datom [1 :likes \"fries\"]
-                                                                #datahike/Datom [1 :likes \"pizza\"]
-                                                                #datahike/Datom [1 :name \"Ivan\"])
+                            (datoms conn {:index :eavt
+                                          :components [1]}) ; => (#datahike/Datom [1 :friends 2]
+                                                            ;     #datahike/Datom [1 :likes \"fries\"]
+                                                            ;     #datahike/Datom [1 :likes \"pizza\"]
+                                                            ;     #datahike/Datom [1 :name \"Ivan\"])
 
                         Find all datoms for entity id == 1 and attribute == :likes (any values) sorted by value
 
-                            (datoms @db {:index :eavt
-                                        :components [1 :likes]}) ; => (#datahike/Datom [1 :likes \"fries\"]
-                                                                     #datahike/Datom [1 :likes \"pizza\"])
+                            (datoms conn {:index :eavt
+                                          :components [1 :likes]}) ; => (#datahike/Datom [1 :likes \"fries\"]
+                                                                   ;     #datahike/Datom [1 :likes \"pizza\"])
 
                         Find all datoms for entity id == 1, attribute == :likes and value == \"pizza\"
 
-                            (datoms @db {:index :eavt
-                                        :components [1 :likes \"pizza\"]}) ; => (#datahike/Datom [1 :likes \"pizza\"])
+                            (datoms conn {:index :eavt
+                                          :components [1 :likes \"pizza\"]}) ; => (#datahike/Datom [1 :likes \"pizza\"])
 
                         Find all datoms for attribute == :likes (any entity ids and values) sorted by entity id, then value
 
-                            (datoms @db {:index :aevt
-                                        :components [:likes]}) ; => (#datahike/Datom [1 :likes \"fries\"]
-                                                                     #datahike/Datom [1 :likes \"pizza\"]
-                                                                     #datahike/Datom [2 :likes \"candy\"]
-                                                                     #datahike/Datom [2 :likes \"pie\"]
-                                                                     #datahike/Datom [2 :likes \"pizza\"])
+                            (datoms conn {:index :aevt
+                                          :components [:likes]}) ; => (#datahike/Datom [1 :likes \"fries\"]
+                                                                 ;     #datahike/Datom [1 :likes \"pizza\"]
+                                                                 ;     #datahike/Datom [2 :likes \"candy\"]
+                                                                 ;     #datahike/Datom [2 :likes \"pie\"]
+                                                                 ;     #datahike/Datom [2 :likes \"pizza\"])
 
                         Find all datoms that have attribute == `:likes` and value == `\"pizza\"` (any entity id)
                         `:likes` must be a unique attr, reference or marked as `:db/index true`
 
-                            (datoms @db {:index :avet
-                                        :components [:likes \"pizza\"]}) ; => (#datahike/Datom [1 :likes \"pizza\"]
-                                                                               #datahike/Datom [2 :likes \"pizza\"])
+                            (datoms conn {:index :avet
+                                          :components [:likes \"pizza\"]}) ; => (#datahike/Datom [1 :likes \"pizza\"]
+                                                                           ;     #datahike/Datom [2 :likes \"pizza\"])
 
                         Find all datoms sorted by entity id, then attribute, then value
 
-                            (datoms @db {:index :eavt}) ; => (...)
+                            (datoms conn {:index :eavt}) ; => (...)
 
 
                         Useful patterns:
 
                         Get all values of :db.cardinality/many attribute
 
-                            (->> (datoms @db {:index :eavt
-                                             :components [eid attr]})
+                            (->> (datoms conn {:index :eavt
+                                               :components [eid attr]})
                                  (map :v))
 
                         Lookup entity ids by attribute value
 
-                            (->> (datoms @db {:index :avet
-                                             :components [attr value]})
+                            (->> (datoms conn {:index :avet
+                                               :components [attr value]})
                                  (map :e))
 
                         Find all entities with a specific attribute
 
-                            (->> (datoms @db {:index :aevt
-                                             :components [attr]})
+                            (->> (datoms conn {:index :aevt
+                                               :components [attr]})
                                  (map :e))
 
                         Find “singleton” entity by its attr
 
-                            (->> (datoms @db {:index :aevt
-                                             :components [attr]})
+                            (->> (datoms conn {:index :aevt
+                                               :components [attr]})
                                  first
                                  :e)
 
                         Find N entities with lowest attr value (e.g. 10 earliest posts)
 
-                            (->> (datoms @db {:index :avet
-                                             :components [attr]})
+                            (->> (datoms conn {:index :avet
+                                               :components [attr]})
                                  (take N))
 
                         Find N entities with highest attr value (e.g. 10 latest posts)
 
-                            (->> (datoms @db {:index :avet
-                                             :components [attr]})
+                            (->> (datoms conn {:index :avet
+                                               :components [attr]})
                                  (reverse)
                                  (take N))
 
@@ -317,24 +317,22 @@
                         - Will not return datoms that are not part of the index (e.g. attributes with no `:db/index` in schema when querying `:avet` index).
                           - `:eavt` and `:aevt` contain all datoms.
                           - `:avet` only contains datoms for references, `:db/unique` and `:db/index` attributes."}
-    (fn
-      ([db arg-map]
-       (type arg-map))
-      ([db index & components]
-       (type index))))
+  (fn
+    ([conn arg-map]
+     (type arg-map))
+    ([conn index & components]
+     (type index))))
 
-#_(defmethod datoms clojure.lang.PersistentArrayMap
-    [db {:keys [index components]}]
-    {:pre [(db/db? db)]}
-    (c/datoms db index components))
+(defmethod datoms clojure.lang.PersistentArrayMap
+  [conn {:keys [index components db-tx]}]
+  (c/datoms conn index components db-tx))
 
-#_(defmethod datoms clojure.lang.Keyword
-    [db index & components]
-    {:pre [(db/db? db)
-           (keyword? index)]}
-    (if (nil? components)
-      (c/datoms db index [])
-      (c/datoms db index components)))
+(defmethod datoms clojure.lang.Keyword
+  [conn index & components]
+  {:pre [(keyword? index)]}
+  (if (nil? components)
+    (c/datoms conn index [])
+    (c/datoms conn index components)))
 
 #_(defmulti seek-datoms {:arglists '([db arg-map] [db index & components])
                          :doc "Similar to [[datoms]], but will return datoms starting from specified components and including rest of the database until the end of the index.
