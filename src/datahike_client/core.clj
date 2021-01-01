@@ -153,6 +153,18 @@
                             (when db-tx
                               {"db-tx" db-tx}))})))
 
+(defn entity
+  ([conn eid]
+   (entity conn eid nil))
+  ([conn eid db-tx]
+   (invoke (.client conn)
+           {:uri "/entity"
+            :method :post
+            :params {:eid eid}
+            :headers (merge {"db-name" (.db-name conn)}
+                            (when db-tx
+                              {"db-tx" db-tx}))})))
+
 (defn db [conn]
   {:pre [(instance? Connection conn)]}
   (invoke (.client conn)
@@ -182,4 +194,5 @@
               :where [_ :name ?v]]})
   (datahike-client.api/datoms conn {:index :eavt})
   (datahike-client.api/datoms conn :eavt)
-  (datahike-client.api/seek-datoms conn :eavt))
+  (datahike-client.api/seek-datoms conn :eavt)
+  (datahike-client.api/entity conn 3))

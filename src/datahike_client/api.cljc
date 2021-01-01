@@ -384,15 +384,8 @@
      (c/seek-datoms conn index [])
      (c/seek-datoms conn index components))))
 
-#_(def ^{:arglists '([part] [part x])
-         :doc "Allocates and returns a unique temporary id (a negative integer). Ignores `part`. Returns `x` if it is specified.
-
-             Exists for Datomic API compatibility. Prefer using negative integers directly if possible."}
-    tempid
-    c/tempid)
-
-#_(def ^{:arglists '([db eid])
-         :doc      "Retrieves an entity by its id from database. Entities are lazy map-like structures to navigate DataScript database content.
+(def ^{:arglists '([conn eid] [conn eid db-tx])
+       :doc      "Retrieves an entity by its id from database. Entities are lazy map-like structures to navigate DataScript database content.
 
                   For `eid` pass entity id or lookup attr:
 
@@ -440,8 +433,8 @@
                   - Comparing entities just compares their ids. Be careful when comparing entities taken from differenct dbs or from different versions of the same db.
                   - Accessed entity attributes are cached on entity itself (except backward references).
                   - When printing, only cached attributes (the ones you have accessed before) are printed. See [[touch]]."}
-    entity
-    c/entity)
+  entity
+  c/entity)
 
 (def ^{:arglists '([conn])
        :doc "Returns the underlying immutable database value from a connection.

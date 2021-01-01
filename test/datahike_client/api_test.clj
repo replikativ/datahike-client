@@ -129,6 +129,11 @@
                first
                second)))))
 
+(deftest entity-test
+  (testing "Successful entity test"
+    (is (= [true {:age 40, :name "Charlie"}]
+           (sut/entity connection 3)))))
+
 (deftest db-test
   (testing "Successful db"
     (is (let [res (sut/db connection)]
