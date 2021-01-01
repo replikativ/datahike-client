@@ -100,6 +100,35 @@
     (is (= [true []]
            (sut/datoms connection :eavt 4 :age 16)))))
 
+(deftest seek-datoms-test
+  (testing "Successful datoms index only"
+    (is (= 8
+           (-> (sut/seek-datoms connection {:index :eavt})
+               second
+               count)))
+    (is (= 8
+           (-> (sut/seek-datoms connection :eavt)
+               second
+               count))))
+  (testing "Successful datoms index and components"
+    (is (= [4 :age 15 536870913 true]
+           (-> (sut/seek-datoms connection {:index :eavt :components [4]})
+               second
+               first)))
+    (is (= [4 :age 15 536870913 true]
+           (-> (sut/seek-datoms connection :eavt 4)
+               second
+               first)))
+    (is (= [4 :age 15 536870913 true]
+           (-> (sut/seek-datoms connection :eavt 4 :age)
+               second
+               first)))
+    (is (= :db/txInstant
+           (-> (sut/seek-datoms connection :eavt 4 :age 16)
+               second
+               first
+               second)))))
+
 (deftest db-test
   (testing "Successful db"
     (is (let [res (sut/db connection)]

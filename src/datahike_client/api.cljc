@@ -334,8 +334,8 @@
     (c/datoms conn index [])
     (c/datoms conn index components)))
 
-#_(defmulti seek-datoms {:arglists '([db arg-map] [db index & components])
-                         :doc "Similar to [[datoms]], but will return datoms starting from specified components and including rest of the database until the end of the index.
+(defmulti seek-datoms {:arglists '([conn arg-map] [conn index & components])
+                       :doc "Similar to [[datoms]], but will return datoms starting from specified components and including rest of the database until the end of the index.
 
                              If no datom matches passed arguments exactly, iterator will start from first datom that could be considered “greater” in index order.
 
@@ -343,49 +343,46 @@
 
                                  (seek-datoms @db {:index :eavt
                                                    :components [1]}) ; => (#datahike/Datom [1 :friends 2]
-                                                                           #datahike/Datom [1 :likes \"fries\"]
-                                                                           #datahike/Datom [1 :likes \"pizza\"]
-                                                                           #datahike/Datom [1 :name \"Ivan\"]
-                                                                           #datahike/Datom [2 :likes \"candy\"]
-                                                                           #datahike/Datom [2 :likes \"pie\"]
-                                                                           #datahike/Datom [2 :likes \"pizza\"])
+                                                                     ;     #datahike/Datom [1 :likes \"fries\"]
+                                                                     ;     #datahike/Datom [1 :likes \"pizza\"]
+                                                                     ;     #datahike/Datom [1 :name \"Ivan\"]
+                                                                     ;     #datahike/Datom [2 :likes \"candy\"]
+                                                                     ;     #datahike/Datom [2 :likes \"pie\"]
+                                                                     ;     #datahike/Datom [2 :likes \"pizza\"])
 
                                  (seek-datoms @db {:index :eavt
                                                    :components [1 :name]}) ; => (#datahike/Datom [1 :name \"Ivan\"]
-                                                                                 #datahike/Datom [2 :likes \"candy\"]
-                                                                                 #datahike/Datom [2 :likes \"pie\"]
-                                                                                 #datahike/Datom [2 :likes \"pizza\"])
+                                                                           ;     #datahike/Datom [2 :likes \"candy\"]
+                                                                           ;     #datahike/Datom [2 :likes \"pie\"]
+                                                                           ;     #datahike/Datom [2 :likes \"pizza\"])
 
                                  (seek-datoms @db {:index :eavt
                                                    :components [2]}) ; => (#datahike/Datom [2 :likes \"candy\"]
-                                                                           #datahike/Datom [2 :likes \"pie\"]
-                                                                           #datahike/Datom [2 :likes \"pizza\"])
+                                                                     ;     #datahike/Datom [2 :likes \"pie\"]
+                                                                     ;     #datahike/Datom [2 :likes \"pizza\"])
 
                              No datom `[2 :likes \"fish\"]`, so starts with one immediately following such in index
 
                                  (seek-datoms @db {:index :eavt
                                                    :components [2 :likes \"fish\"]}) ; => (#datahike/Datom [2 :likes \"pie\"]
-                                                                                           #datahike/Datom [2 :likes \"pizza\"])"}
-    (fn
-      ([db arg-map]
-       (type arg-map))
-      ([db index & components]
-       (type index))))
+                                                                                     ;     #datahike/Datom [2 :likes \"pizza\"])"}
+  (fn
+    ([conn arg-map]
+     (type arg-map))
+    ([conn index & components]
+     (type index))))
 
-#_(defmethod seek-datoms clojure.lang.PersistentArrayMap
-    [db {:keys [index components]}]
-    {:pre [(db/db? db)]}
-    (c/seek-datoms db index components))
+(defmethod seek-datoms clojure.lang.PersistentArrayMap
+  [conn {:keys [index components db-tx]}]
+  (c/seek-datoms conn index components db-tx))
 
-#_(defmethod seek-datoms clojure.lang.Keyword
-    [db index & components]
-    {:pre [(db/db? db)
-           (keyword? index)]}
-    (if (nil? components)
-      (c/seek-datoms db index [])
-      (c/seek-datoms db index components)))
-
-#_(def ^:private last-tempid (atom -1000000))
+(defmethod seek-datoms clojure.lang.Keyword
+  ([conn index & components]
+   {:pre [(keyword? index)]}
+   (if (or (empty? components)
+           (nil? components))
+     (c/seek-datoms conn index [])
+     (c/seek-datoms conn index components))))
 
 #_(def ^{:arglists '([part] [part x])
          :doc "Allocates and returns a unique temporary id (a negative integer). Ignores `part`. Returns `x` if it is specified.
