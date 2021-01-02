@@ -3,21 +3,32 @@
 Datahike Client is a library to interact with Datahike Server from your Clojure and
 Clojurescript applications.
 
+This project is early stage and considered instable. Expect changes to the API and
+to the underlying parts.
+
 ## Usage
 
-FIXME
+```
+(require [datahike-client.api :as d]))
 
-## License
+(defonce config {:timeout 300
+                 :endpoint "http://localhost:3000"
+                 :token "secret"
+                 :db-name "config-test"})
 
-Copyright © 2020 FIXME
+(def client (d/client config))
 
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
+(def connection (d/connect client (:db-name config)))
 
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+(d/transact connection {:db-name (:db-name config)
+                        :tx-data [{:name  "Alice", :age   20}
+                                  {:name  "Bob", :age   30}
+                                  {:name  "Charlie", :age   40}
+                                  {:age 15}]})
+
+(d/q connection
+     {:query '[:find ?v
+      :where [_ :name ?v]]}) ; =>  [["Charlie"] ["Alice"] ["Bob"]]
+```
+
+Take a look at [cljdoc.org](https://cljdoc.org/d/io.replikativ/datahike-client).
