@@ -1,6 +1,5 @@
 (ns datahike-client.core
   (:require [clojure.walk :as walk]
-            [taoensso.timbre :as log]
             [datahike-client.request :as r]))
 
 (deftype Client [endpoint token])
