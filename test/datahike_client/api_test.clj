@@ -84,54 +84,46 @@
   (testing "Successful datoms index only"
     (is (= 8
            (-> (sut/datoms connection {:index :eavt})
-               second
                count)))
     (is (= 8
            (-> (sut/datoms connection :eavt)
-               second
                count))))
   (testing "Successful datoms index and components"
-    (is (= [true [[4 :age 15 536870913 true]]]
+    (is (= [[4 :age 15 536870913 true]]
            (sut/datoms connection {:index :eavt :components [4]})))
-    (is (= [true [[4 :age 15 536870913 true]]]
+    (is (= [[4 :age 15 536870913 true]]
            (sut/datoms connection :eavt 4)))
-    (is (= [true [[4 :age 15 536870913 true]]]
+    (is (= [[4 :age 15 536870913 true]]
            (sut/datoms connection :eavt 4 :age)))
-    (is (= [true []]
+    (is (= []
            (sut/datoms connection :eavt 4 :age 16)))))
 
 (deftest seek-datoms-test
   (testing "Successful datoms index only"
     (is (= 8
            (-> (sut/seek-datoms connection {:index :eavt})
-               second
                count)))
     (is (= 8
            (-> (sut/seek-datoms connection :eavt)
-               second
                count))))
   (testing "Successful datoms index and components"
     (is (= [4 :age 15 536870913 true]
            (-> (sut/seek-datoms connection {:index :eavt :components [4]})
-               second
                first)))
     (is (= [4 :age 15 536870913 true]
            (-> (sut/seek-datoms connection :eavt 4)
-               second
                first)))
     (is (= [4 :age 15 536870913 true]
            (-> (sut/seek-datoms connection :eavt 4 :age)
-               second
                first)))
     (is (= :db/txInstant
            (-> (sut/seek-datoms connection :eavt 4 :age 16)
-               second
                first
                second)))))
 
 (deftest entity-test
   (testing "Successful entity test"
-    (is (= [true {:age 40, :name "Charlie"}]
+    (is (= {:age 40, :name "Charlie"}
            (sut/entity connection 3)))))
 
 (deftest db-test

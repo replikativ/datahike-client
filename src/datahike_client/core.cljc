@@ -1,7 +1,7 @@
 (ns datahike-client.core
-    (:require [clojure.walk :as walk]
-              [taoensso.timbre :as log]
-              [datahike-client.request :as r]))
+  (:require [clojure.walk :as walk]
+            [taoensso.timbre :as log]
+            [datahike-client.request :as r]))
 
 (deftype Client [endpoint token])
 
@@ -28,10 +28,10 @@
   {:pre [(instance? Connection conn)
          (map? arg-map)]}
   (r/invoke (.client conn)
-          {:uri "/transact"
-           :params {:tx-data (:tx-data arg-map)}
-           :method :post
-           :headers {"db-name" (.db-name conn)}}))
+            {:uri "/transact"
+             :params {:tx-data (:tx-data arg-map)}
+             :method :post
+             :headers {"db-name" (.db-name conn)}}))
 
 (defn pull
   ([conn {:keys [selector eid db-tx]}]
@@ -45,13 +45,13 @@
           (or (int? db-tx)
               (nil? db-tx))]}
    (r/invoke (.client conn)
-           {:uri "/pull"
-            :params {:selector selector
-                     :eid eid}
-            :method :post
-            :headers (merge {"db-name" (.db-name conn)}
-                            (when db-tx
-                              {"db-tx" db-tx}))})))
+             {:uri "/pull"
+              :params {:selector selector
+                       :eid eid}
+              :method :post
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))})))
 
 (defn pull-many
   ([conn {:keys [selector eids db-tx]}]
@@ -65,84 +65,84 @@
           (or (int? db-tx)
               (nil? db-tx))]}
    (r/invoke (.client conn)
-           {:uri "/pull-many"
-            :params {:selector selector
-                     :eids eids}
-            :method :post
-            :headers (merge {"db-name" (.db-name conn)}
-                            (when db-tx
-                              {"db-tx" db-tx}))})))
+             {:uri "/pull-many"
+              :params {:selector selector
+                       :eids eids}
+              :method :post
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))})))
 
 (defn q
   ([conn {:keys [query args limit offset db-tx]}]
    (r/invoke (.client conn)
-           {:uri "/q"
-            :method :post
-            :params (merge {:query query}
-                           (when args
-                            {:args args})
-                           (when limit
-                            {:limit limit})
-                           (when offset
-                            {:offset offset}))
-            :headers (merge {"db-name" (.db-name conn)}
-                            (when db-tx
-                              {"db-tx" db-tx}))}))
+             {:uri "/q"
+              :method :post
+              :params (merge {:query query}
+                             (when args
+                               {:args args})
+                             (when limit
+                               {:limit limit})
+                             (when offset
+                               {:offset offset}))
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))}))
   ([conn query & args]
    (let [[args limit offset db-tx] args]
-    (q conn
-       {:query query
-        :args args
-        :limit limit
-        :offset offset
-        :db-tx db-tx}))))
+     (q conn
+        {:query query
+         :args args
+         :limit limit
+         :offset offset
+         :db-tx db-tx}))))
 
 (defn datoms
   ([conn index components]
    (datoms conn index components nil))
   ([conn index components db-tx]
-   (invoke (.client conn)
-           {:uri "/datoms"
-            :method :post
-            :params (merge {:index index}
-                           (when components
-                            {:components components}))
-            :headers (merge {"db-name" (.db-name conn)}
-                            (when db-tx
-                              {"db-tx" db-tx}))})))
+   (r/invoke (.client conn)
+             {:uri "/datoms"
+              :method :post
+              :params (merge {:index index}
+                             (when components
+                               {:components components}))
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))})))
 
 (defn seek-datoms
   ([conn index components]
    (seek-datoms conn index components nil))
   ([conn index components db-tx]
-   (invoke (.client conn)
-           {:uri "/seek-datoms"
-            :method :post
-            :params (merge {:index index}
-                           (when components
-                            {:components components}))
-            :headers (merge {"db-name" (.db-name conn)}
-                            (when db-tx
-                              {"db-tx" db-tx}))})))
+   (r/invoke (.client conn)
+             {:uri "/seek-datoms"
+              :method :post
+              :params (merge {:index index}
+                             (when components
+                               {:components components}))
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))})))
 
 (defn entity
   ([conn eid]
    (entity conn eid nil))
   ([conn eid db-tx]
-   (invoke (.client conn)
-           {:uri "/entity"
-            :method :post
-            :params {:eid eid}
-            :headers (merge {"db-name" (.db-name conn)}
-                            (when db-tx
-                              {"db-tx" db-tx}))})))
+   (r/invoke (.client conn)
+             {:uri "/entity"
+              :method :post
+              :params {:eid eid}
+              :headers (merge {"db-name" (.db-name conn)}
+                              (when db-tx
+                                {"db-tx" db-tx}))})))
 
 (defn db [conn]
   {:pre [(instance? Connection conn)]}
   (r/invoke (.client conn)
-          {:uri "/db"
-           :method :get
-           :headers {"db-name" (.db-name conn)}}))
+            {:uri "/db"
+             :method :get
+             :headers {"db-name" (.db-name conn)}}))
 
 (comment
   (def config {:timeout 300
@@ -166,9 +166,9 @@
   (pull conn {:selector [:age :name] :eid 4 :db-tx 12345556})
   (pull-many conn {:selector [:age :name] :eids [1 2 3 4]})
   (datahike-client.api/q
-    conn
-    {:query '[:find ?v
-              :where [_ :name ?v]]})
+   conn
+   {:query '[:find ?v
+             :where [_ :name ?v]]})
   (datahike-client.api/datoms conn {:index :eavt})
   (datahike-client.api/datoms conn :eavt)
   (datahike-client.api/seek-datoms conn :eavt)

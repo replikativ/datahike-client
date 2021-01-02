@@ -1,8 +1,8 @@
 (ns datahike-client.request
-    (:require [java-http-clj.core :as http]
-              [cognitect.transit :as transit]
-              [taoensso.timbre :as log])
-    (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
+  (:require [java-http-clj.core :as http]
+            [cognitect.transit :as transit]
+            [taoensso.timbre :as log])
+  (:import [java.io ByteArrayInputStream ByteArrayOutputStream]))
 
 (defn invoke [client {:keys [uri method params headers timeout]}]
   (let [out (ByteArrayOutputStream. 4096)
@@ -16,7 +16,7 @@
                                       "Charset" "utf-8"}
                                      (when-let [token (.token client)]
                                        {"authorization" (str "token " token)}))
-                     :timeout (or timeout 300)
+                     :timeout (or timeout 600)
                      :body (.toString out)}
         _ (log/debug "Request sent with " request-map)
         response     (http/send request-map {:as :input-stream})]

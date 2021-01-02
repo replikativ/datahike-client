@@ -1,7 +1,7 @@
 (ns datahike-client.request
-    (:require [ajax.core :as http]
-              [taoensso.timbre :as log])
-    (:import [datahike-client.core Client]))
+  (:require [ajax.core :as http]
+            [taoensso.timbre :as log])
+  (:import [datahike-client.core Client]))
 
 (defn invoke [client {:keys [uri method params headers timeout]}]
   {:pre [(instance? Client client)]}

@@ -25,7 +25,7 @@
   c/connect)
 
 (def
-  ^{:arglists '([client][client arg-map])
+  ^{:arglists '([client] [client arg-map])
     :doc "Lists all databases.
           Usage:
 
@@ -122,7 +122,7 @@
   transact
   c/transact)
 
-(def ^{:arglists '([conn arg-map][conn selector eid][conn selector eid db-tx])
+(def ^{:arglists '([conn arg-map] [conn selector eid] [conn selector eid db-tx])
        :doc      "Fetches data from database using recursive declarative description. See [docs.datomic.com/on-prem/pull.html](https://docs.datomic.com/on-prem/pull.html).
 
                   Unlike [[entity]], returns plain Clojure map (not lazy).
@@ -138,7 +138,7 @@
   pull
   c/pull)
 
-(def ^{:arglists '([conn arg-map][conn selector eids][conn selector eids db-tx])
+(def ^{:arglists '([conn arg-map] [conn selector eids] [conn selector eids db-tx])
        :doc      "Same as [[pull]], but accepts sequence of ids and returns sequence of maps.
 
                   Usage:
