@@ -1,6 +1,7 @@
 # datahike-client
 
-A Clojure library designed to ... well, that part is up to you.
+Datahike Client is a library to interact with Datahike Server from your Clojure and
+Clojurescript applications.
 
 ## Usage
 

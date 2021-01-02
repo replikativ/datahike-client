@@ -1,12 +1,7 @@
 (ns datahike-client.core
     (:require [clojure.walk :as walk]
-              [ajax.core :as http]
-              [taoensso.timbre :as log]))
-
-(defonce config {:timeout 300
-                 :endpoint "http://localhost:3000"
-                 :token "bar"
-                 :db-name "config-test"})
+              [taoensso.timbre :as log]
+              [datahike-client.request :as r]))
 
 (deftype Client [endpoint token])
 
@@ -20,42 +15,19 @@
          (string? db-name)]}
   (->Connection client db-name))
 
-; TODO Make it cljs-ready
-(defn invoke [client {:keys [uri method params headers]}]
-  {:pre [(instance? Client client)]}
-  (let [response                         (atom {})
-        handler                          (fn [res] (reset! response res))
-        request-map                       {:uri             (str (.endpoint client) uri)
-                                           :method          method
-                                           :format          (http/transit-request-format)
-                                           :response-format (http/transit-response-format)
-                                           :headers         headers
-                                           :timeout         (:timeout config)
-                                           :params          params
-                                           :handler         handler}
-        _                                (log/debug request-map)]
-    @(http/ajax-request request-map)
-    @response
-    #_(let [res @response
-            _ (log/debug res)]
-        (if (first res)
-          (second res)
-          (throw (ex-info "Failed request" {:request request-map
-                                            :cause (second res)}))))))
-
 (defn list-databases
   ([client]
    (list-databases client {}))
   ([client arg-map]
    {:pre [(instance? Client client)
           (map? arg-map)]}
-   (invoke client {:uri "/databases"
-                   :method :get})))
+   (r/invoke client {:uri "/databases"
+                     :method :get})))
 
 (defn transact [conn arg-map]
   {:pre [(instance? Connection conn)
          (map? arg-map)]}
-  (invoke (.client conn)
+  (r/invoke (.client conn)
           {:uri "/transact"
            :params {:tx-data (:tx-data arg-map)}
            :method :post
@@ -72,7 +44,7 @@
           (int? eid)
           (or (int? db-tx)
               (nil? db-tx))]}
-   (invoke (.client conn)
+   (r/invoke (.client conn)
            {:uri "/pull"
             :params {:selector selector
                      :eid eid}
@@ -92,7 +64,7 @@
           (vector? eids)
           (or (int? db-tx)
               (nil? db-tx))]}
-   (invoke (.client conn)
+   (r/invoke (.client conn)
            {:uri "/pull-many"
             :params {:selector selector
                      :eids eids}
@@ -103,7 +75,7 @@
 
 (defn q
   ([conn {:keys [query args limit offset db-tx]}]
-   (invoke (.client conn)
+   (r/invoke (.client conn)
            {:uri "/q"
             :method :post
             :params (merge {:query query}
@@ -167,12 +139,17 @@
 
 (defn db [conn]
   {:pre [(instance? Connection conn)]}
-  (invoke (.client conn)
+  (r/invoke (.client conn)
           {:uri "/db"
            :method :get
            :headers {"db-name" (.db-name conn)}}))
 
 (comment
+  (defonce config {:timeout 300
+                   :endpoint "http://localhost:3000"
+                   :token "bar"
+                   :db-name "config-test"})
+
   (def c (client config))
   (.endpoint c)
   (instance? Client c)

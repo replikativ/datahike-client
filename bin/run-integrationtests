@@ -27,4 +27,4 @@ CONTAINER_NAME=$(setup)
 
 sleep 3
 
-TIMBRE_LEVEL=':info' lein test
+TIMBRE_LEVEL=':info' clojure -M:test

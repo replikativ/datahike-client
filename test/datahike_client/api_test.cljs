@@ -31,18 +31,18 @@
 
 (deftest list-databases-test
   (testing "Successful list-databases"
-    (is (= {:databases [{:store {:id "default", :backend :mem}
-                         :keep-history? true
-                         :schema-flexibility :read
-                         :name (:db-name config)
-                         :index :datahike.index/hitchhiker-tree}]}
+    (is (= [true {:databases [{:store {:id "default", :backend :mem}
+                               :keep-history? true
+                               :schema-flexibility :read
+                               :name (:db-name config)
+                               :index :datahike.index/hitchhiker-tree}]}]
            (sut/list-databases client)))))
 
 (deftest pull-test
   (testing "Successful pull"
-    (is (= {:age 15}
+    (is (= [true {:age 15}]
            (sut/pull connection {:selector [:age :name] :eid 4})))
-    (is (= {:age 15}
+    (is (= [true {:age 15}]
            (sut/pull connection [:age :name] 4))))
   ; TODO throws classcast exception
   #_(testing "Successful pull with db-tx"
@@ -55,85 +55,33 @@
 
 (deftest pull-many-test
   (testing "Successful pull-many"
-    (is (= [{:age 40, :name "Charlie"} {:age 15}]
+    (is (= [true [{:age 40, :name "Charlie"} {:age 15}]]
            (sut/pull-many connection {:selector [:age :name] :eids [3 4]})))
-    (is (= [{:age 40, :name "Charlie"} {:age 15}]
+    (is (= [true [{:age 40, :name "Charlie"} {:age 15}]]
            (sut/pull-many connection {:selector [:age :name] :eids [3 4]})))))
 
 (deftest q-test
   (testing "Successful q"
-    (is (= [["Charlie"]]
+    (is (= [true [["Charlie"]]]
            (sut/q connection {:query '[:find ?v
                                        :where [_ :name ?v]]
                               :args []
                               :limit 1
                               :offset 0})))
-    (is (= [["Charlie"]]
+    (is (= [true [["Charlie"]]]
            (sut/q connection
                   '[:find ?v
                     :where [_ :name ?v]]
                   []
                   1
                   0)))
-    (is (= [["Charlie"] ["Alice"] ["Bob"]]
+    (is (= [true [["Charlie"] ["Alice"] ["Bob"]]]
            (sut/q connection
                   {:query '[:find ?v
                             :where [_ :name ?v]]})))))
 
-(deftest datoms-test
-  (testing "Successful datoms index only"
-    (is (= 8
-           (-> (sut/datoms connection {:index :eavt})
-               second
-               count)))
-    (is (= 8
-           (-> (sut/datoms connection :eavt)
-               second
-               count))))
-  (testing "Successful datoms index and components"
-    (is (= [true [[4 :age 15 536870913 true]]]
-           (sut/datoms connection {:index :eavt :components [4]})))
-    (is (= [true [[4 :age 15 536870913 true]]]
-           (sut/datoms connection :eavt 4)))
-    (is (= [true [[4 :age 15 536870913 true]]]
-           (sut/datoms connection :eavt 4 :age)))
-    (is (= [true []]
-           (sut/datoms connection :eavt 4 :age 16)))))
-
-(deftest seek-datoms-test
-  (testing "Successful datoms index only"
-    (is (= 8
-           (-> (sut/seek-datoms connection {:index :eavt})
-               second
-               count)))
-    (is (= 8
-           (-> (sut/seek-datoms connection :eavt)
-               second
-               count))))
-  (testing "Successful datoms index and components"
-    (is (= [4 :age 15 536870913 true]
-           (-> (sut/seek-datoms connection {:index :eavt :components [4]})
-               second
-               first)))
-    (is (= [4 :age 15 536870913 true]
-           (-> (sut/seek-datoms connection :eavt 4)
-               second
-               first)))
-    (is (= [4 :age 15 536870913 true]
-           (-> (sut/seek-datoms connection :eavt 4 :age)
-               second
-               first)))
-    (is (= :db/txInstant
-           (-> (sut/seek-datoms connection :eavt 4 :age 16)
-               second
-               first
-               second)))))
-
-(deftest entity-test
-  (testing "Successful entity test"
-    (is (= [true {:age 40, :name "Charlie"}]
-           (sut/entity connection 3)))))
-
 (deftest db-test
   (testing "Successful db"
-    (is (contains? (sut/db connection) :tx))))
+    (is (let [res (sut/db connection)]
+          (and (true? (first res))
+               (contains? (second res) :tx))))))
