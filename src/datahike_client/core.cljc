@@ -145,13 +145,13 @@
            :headers {"db-name" (.db-name conn)}}))
 
 (comment
-  (defonce config {:timeout 300
-                   :endpoint "http://localhost:3000"
-                   :token "bar"
-                   :db-name "config-test"})
+  (def config {:timeout 300
+               :endpoint "http://localhost:3000"
+               :token "secret"
+               :db-name "config-test"})
 
   (def c (client config))
-  (.endpoint c)
+  (.token c)
   (instance? Client c)
   (list-databases c {})
   (def conn (connect c (:db-name config)))

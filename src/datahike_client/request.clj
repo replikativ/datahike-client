@@ -13,9 +13,12 @@
                      :headers (merge headers
                                      {"Accept" "application/transit+json"
                                       "Content-type" "application/transit+json"
-                                      "Charset" "utf-8"})
+                                      "Charset" "utf-8"}
+                                     (when-let [token (.token client)]
+                                       {"authorization" (str "token " token)}))
                      :timeout (or timeout 300)
                      :body (.toString out)}
+        _ (log/debug "Request sent with " request-map)
         response     (http/send request-map {:as :input-stream})]
     (if (and (contains? response :status)
              (< (:status response) 400))
