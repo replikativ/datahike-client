@@ -6,20 +6,27 @@ orbs:
 workflows:
   build-test-and-deploy:
     jobs:
-      - tools/setup
+      - tools/setup:
+          context: dockerhub-deploy
+          setup_cljs: false
       - tools/format:
+          context: dockerhub-deploy
           requires:
             - tools/setup
       - tools/integrationtest-datahike-server:
+          context: dockerhub-deploy
           requires:
             - tools/setup
       - tools/build:
+          context: dockerhub-deploy
           jarname: "datahike-client"
           requires:
             - tools/setup
       - tools/deploy-snapshot:
           jarname: "datahike-client"
-          context: clojars-deploy
+          context:
+            - clojars-deploy
+            - dockerhub-deploy
           filters:
             branches:
               only: development
@@ -30,7 +37,9 @@ workflows:
             - tools/build
       - tools/deploy-release:
           jarname: "datahike-client"
-          context: clojars-deploy
+          context:
+            - clojars-deploy
+            - dockerhub-deploy
           filters:
             branches:
               only: master
